@@ -10,26 +10,25 @@ class SVM:
         self.C = C  # 惩罚参数
         self.toler = toler  # 迭代的终止条件之一
         self.n_samples = np.shape(dataset)[0]  # 训练样本的个数
-        self.alphas = np.zeros((self.n_samples, 1))  # 拉格朗日乘子
+        self.alphas = np.mat(np.zeros((self.n_samples, 1)))  # 拉格朗日乘子
         self.b = 0
-        self.error_tmp = np.zeros((self.n_samples, 2))  # 保存E的缓存
+        self.error_tmp = np.mat(np.zeros((self.n_samples, 2)))  # 保存E的缓存
         self.kernel_opt = kernel_option  # 选用的核函数及其参数
-        self.kernel_mat = calc_kernel(self.train_x, self.kernel_opt)  # 核函数的输出
+        self.kernel_mat = cal_kernel(self.train_x, self.kernel_opt)  # 核函数的输出
 
 
 def cal_kernel_value(train_x, train_x_i, kernel_option):
-    """
-    样本之间的核函数的值
+    '''样本之间的核函数的值
     input:  train_x(mat):训练样本
             train_x_i(mat):第i个训练样本
             kernel_option(tuple):核函数的类型以及参数
     output: kernel_value(mat):样本之间的核函数的值
 
-    """
+    '''
     kernel_type = kernel_option[0]  # 核函数的类型，分为rbf和其他
     m = np.shape(train_x)[0]  # 样本的个数
 
-    kernel_value = np.zeros((m, 1))
+    kernel_value = np.mat(np.zeros((m, 1)))
 
     if kernel_type == 'rbf':  # rbf核函数
         sigma = kernel_option[1]
@@ -43,9 +42,8 @@ def cal_kernel_value(train_x, train_x_i, kernel_option):
     return kernel_value
 
 
-def calc_kernel(train_x, kernel_option):
-    '''
-    计算核函数矩阵
+def cal_kernel(train_x, kernel_option):
+    '''计算核函数矩阵
     input:  train_x(mat):训练样本的特征值
             kernel_option(tuple):核函数的类型以及参数
     output: kernel_matrix(mat):样本的核函数的值
@@ -58,36 +56,34 @@ def calc_kernel(train_x, kernel_option):
 
 
 def cal_error(svm, alpha_k):
-    """
-    误差值的计算
+    '''误差值的计算
     input:  svm:SVM模型
             alpha_k(int):选择出的变量
     output: error_k(float):误差值
-    """
+    '''
     output_k = float(np.multiply(svm.alphas, svm.train_y).T * svm.kernel_mat[:, alpha_k] + svm.b)
     error_k = output_k - float(svm.train_y[alpha_k])
     return error_k
 
 
 def update_error_tmp(svm, alpha_k):
-    """
-    重新计算误差值
+    '''重新计算误差值
     input:  svm:SVM模型
             alpha_k(int):选择出的变量
     output: 对应误差值
-    """
+    '''
     error = cal_error(svm, alpha_k)
     svm.error_tmp[alpha_k] = [1, error]
 
 
 def select_second_sample_j(svm, alpha_i, error_i):
-    """选择第二个样本
+    '''选择第二个样本
     input:  svm:SVM模型
             alpha_i(int):选择出的第一个变量
             error_i(float):E_i
     output: alpha_j(int):选择出的第二个变量
             error_j(float):E_j
-    """
+    '''
     # 标记为已被优化
     svm.error_tmp[alpha_i] = [1, error_i]
     candidate_alpha_list = np.nonzero(svm.error_tmp[:, 0].A)[0]
@@ -105,7 +101,7 @@ def select_second_sample_j(svm, alpha_i, error_i):
                 max_step = abs(error_k - error_i)
                 alpha_j = alpha_k
                 error_j = error_k
-    else:  # 随机选择
+    else:  # 随机选择          
         alpha_j = alpha_i
         while alpha_j == alpha_i:
             alpha_j = int(np.random.uniform(0, svm.n_samples))
@@ -115,11 +111,10 @@ def select_second_sample_j(svm, alpha_i, error_i):
 
 
 def choose_and_update(svm, alpha_i):
-    """
-    判断和选择两个alpha进行更新
+    '''判断和选择两个alpha进行更新
     input:  svm:SVM模型
             alpha_i(int):选择出的第一个变量
-    """
+    '''
     error_i = cal_error(svm, alpha_i)  # 计算第一个样本的E_i
 
     # 判断选择出的第一个变量是否违反了KKT条件
@@ -133,12 +128,12 @@ def choose_and_update(svm, alpha_i):
 
         # 2、计算上下界
         if svm.train_y[alpha_i] != svm.train_y[alpha_j]:
-            L = max(0, svm.alphas[alpha_j] - svm.alphas[alpha_i])
-            H = min(svm.C, svm.C + svm.alphas[alpha_j] - svm.alphas[alpha_i])
+            low = max(0, svm.alphas[alpha_j] - svm.alphas[alpha_i])
+            high = min(svm.C, svm.C + svm.alphas[alpha_j] - svm.alphas[alpha_i])
         else:
-            L = max(0, svm.alphas[alpha_j] + svm.alphas[alpha_i] - svm.C)
-            H = min(svm.C, svm.alphas[alpha_j] + svm.alphas[alpha_i])
-        if L == H:
+            low = max(0, svm.alphas[alpha_j] + svm.alphas[alpha_i] - svm.C)
+            high = min(svm.C, svm.alphas[alpha_j] + svm.alphas[alpha_i])
+        if low == high:
             return 0
 
         # 3、计算eta
@@ -151,12 +146,12 @@ def choose_and_update(svm, alpha_i):
         svm.alphas[alpha_j] -= svm.train_y[alpha_j] * (error_i - error_j) / eta
 
         # 5、确定最终的alpha_j
-        if svm.alphas[alpha_j] > H:
-            svm.alphas[alpha_j] = H
-        if svm.alphas[alpha_j] < L:
-            svm.alphas[alpha_j] = L
+        if svm.alphas[alpha_j] > high:
+            svm.alphas[alpha_j] = high
+        if svm.alphas[alpha_j] < low:
+            svm.alphas[alpha_j] = low
 
-        # 6、判断是否结束
+        # 6、判断是否结束      
         if abs(alpha_j_old - svm.alphas[alpha_j]) < 0.00001:
             update_error_tmp(svm, alpha_j)
             return 0
@@ -191,8 +186,7 @@ def choose_and_update(svm, alpha_i):
 
 
 def svm_training(train_x, train_y, C, toler, max_iter, kernel_option=('rbf', 0.431029)):
-    """
-    SVM的训练
+    '''SVM的训练
     input:  train_x(mat):训练数据的特征
             train_y(mat):训练数据的标签
             C(float):惩罚系数
@@ -200,7 +194,7 @@ def svm_training(train_x, train_y, C, toler, max_iter, kernel_option=('rbf', 0.4
             max_iter(int):最大迭代次数
             kerner_option(tuple):核函数的类型及其参数
     output: svm模型
-    """
+    '''
     # 1、初始化SVM分类器
     svm = SVM(train_x, train_y, C, toler, kernel_option)
 
@@ -238,12 +232,11 @@ def svm_training(train_x, train_y, C, toler, max_iter, kernel_option=('rbf', 0.4
 
 
 def svm_predict(svm, test_sample_x):
-    """
-    利用SVM模型对每一个样本进行预测
+    '''利用SVM模型对每一个样本进行预测
     input:  svm:SVM模型
             test_sample_x(mat):样本
     output: predict(float):对样本的预测
-    """
+    '''
     # 1、计算核函数矩阵
     kernel_value = cal_kernel_value(svm.train_x, test_sample_x, svm.kernel_opt)
     # 2、计算预测值
@@ -252,13 +245,12 @@ def svm_predict(svm, test_sample_x):
 
 
 def cal_accuracy(svm, test_x, test_y):
-    """
-    计算预测的准确性
+    '''计算预测的准确性
     input:  svm:SVM模型
             test_x(mat):测试的特征
             test_y(mat):测试的标签
     output: accuracy(float):预测的准确性
-    """
+    '''
     n_samples = np.shape(test_x)[0]  # 样本的个数
     correct = 0.0
     for i in range(n_samples):
@@ -272,10 +264,10 @@ def cal_accuracy(svm, test_x, test_y):
 
 
 def save_svm_model(svm_model, model_file):
-    """
-    保存SVM模型
+    '''保存SVM模型
     input:  svm_model:SVM模型
             model_file(string):SVM模型需要保存到的文件
-    """
+    '''
     with open(model_file, 'wb') as f:
         pickle.dump(svm_model, f)
+
