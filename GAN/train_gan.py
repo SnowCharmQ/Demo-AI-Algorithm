@@ -1,3 +1,5 @@
+import os.path
+
 import tqdm
 import torch
 import torchvision
@@ -14,7 +16,7 @@ env = 'GAN'
 data_path = 'data/'
 dis_path = None
 gen_path = None
-save_path = 'img/'
+save_path = 'img'
 debug_file = '/tmp/debuggan'
 lr1 = 2e-4
 lr2 = 2e-4
@@ -26,8 +28,7 @@ max_epoch = 200
 batch_size = 256
 d_every = 1
 g_every = 5
-plot_every = 20
-save_every = 20
+save_every = 10
 
 # 数据
 transforms = torchvision.transforms.Compose([
@@ -105,7 +106,11 @@ for epoch in tqdm.tqdm(epochs):
             optimizer_g.step()
             gen_meter.add(error_g.item())
 
-    if (epoch + 1) % save_every == 0:
+    if not os.path.exists('img'):
+        os.mkdir('img')
+    if not os.path.exists('checkpoints'):
+        os.mkdir('checkpoints')
+    if epoch == 0 or (epoch + 1) % save_every == 0:
         fix_fake_imgs = generator(fix_noises)
         # 保存模型、图片
         torchvision.utils.save_image(fix_fake_imgs.data[:64], '%s/%s.png' % (save_path, epoch), normalize=True,
