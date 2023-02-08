@@ -8,8 +8,8 @@ gen_num = 64
 gen_search_num = 512
 gen_mean = 0
 gen_std = 1
-dis_path = ''
-gen_path = ''
+gen_path = 'checkpoints/generator_199.pth'
+dis_path = 'checkpoints/discriminator_199.pth'
 gen_img = 'result.png'
 
 
