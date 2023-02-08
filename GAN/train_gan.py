@@ -17,7 +17,6 @@ data_path = 'data/'
 dis_path = None
 gen_path = None
 save_path = 'img'
-debug_file = '/tmp/debuggan'
 lr1 = 2e-4
 lr2 = 2e-4
 nz = 100
@@ -47,11 +46,6 @@ dataloader = DataLoader(dataset,
 
 # 网络
 generator, discriminator = Generator(), Discriminator()
-map_location = lambda storage, loc: storage
-if dis_path:
-    discriminator.load_state_dict(torch.load(dis_path, map_location=map_location))
-if gen_path:
-    generator.load_state_dict(torch.load(gen_path, map_location=map_location))
 discriminator.to(device)
 generator.to(device)
 
