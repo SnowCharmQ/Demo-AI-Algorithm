@@ -10,7 +10,6 @@ cuda_id = 0
 device_name = "cuda:{}".format(cuda_id)
 device = torch.device(device_name)
 
-vis = False
 env = 'GAN'
 data_path = 'data/'
 dis_path = None
@@ -28,14 +27,7 @@ batch_size = 256
 d_every = 1
 g_every = 5
 plot_every = 20
-save_every = 10
-
-if vis:
-    from visualize import Visualizer
-
-    vis = Visualizer(env)
-else:
-    vis = None
+save_every = 20
 
 # 数据
 transforms = torchvision.transforms.Compose([
@@ -79,7 +71,6 @@ gen_meter = AverageValueMeter()
 
 epochs = range(max_epoch)
 for epoch in tqdm.tqdm(epochs):
-    fix_fake_imgs = None
     for ii, (img, _) in enumerate(dataloader):
         real_img = img.to(device)
 
@@ -114,15 +105,8 @@ for epoch in tqdm.tqdm(epochs):
             optimizer_g.step()
             gen_meter.add(error_g.item())
 
-        if vis and ii % plot_every == plot_every - 1:
-            # 可视化
-            fix_fake_imgs = generator(fix_noises)
-            vis.images(fix_fake_imgs.detach().cpu().numpy()[:64] * 0.5 + 0.5, win='fixfake')
-            vis.images(real_img.data.cpu().numpy()[:64] * 0.5 + 0.5, win='real')
-            vis.plot('errord', dis_meter.value()[0])
-            vis.plot('errorg', gen_meter.value()[0])
-
-    if (epoch + 1) % save_every == 0 and fix_fake_imgs:
+    if (epoch + 1) % save_every == 0:
+        fix_fake_imgs = generator(fix_noises)
         # 保存模型、图片
         torchvision.utils.save_image(fix_fake_imgs.data[:64], '%s/%s.png' % (save_path, epoch), normalize=True,
                                      range=(-1, 1))
