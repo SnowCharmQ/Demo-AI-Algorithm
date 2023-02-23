@@ -1,28 +1,31 @@
 import os
-import cv2
 import torchvision
+from PIL import Image
+import numpy as np
 
 from torch.utils.data import Dataset
 
 
-def __trans__(img, size):
+def trans(img, size):
     # 图片的宽高
     h, w = img.shape[0:2]
     # 需要的尺寸
-    _w = _h = size
+    n_w = n_h = size
     # 不改变图像的宽高比例
-    scale = min(_h / h, _w / w)
+    scale = min(n_h / h, n_w / w)
     h = int(h * scale)
     w = int(w * scale)
     # 缩放图像
-    img = cv2.resize(img, (w, h), interpolation=cv2.INTER_CUBIC)
+    img = Image.fromarray(img)
+    img = img.resize((w, h), resample=Image.BICUBIC)
+    img = np.array(img)
     # 上下左右分别要扩展的像素数
-    top = (_h - h) // 2
-    left = (_w - w) // 2
-    bottom = _h - h - top
-    right = _w - w - left
+    top = (n_h - h) // 2
+    left = (n_w - w) // 2
     # 生成一个新的填充过的图像，这里用纯黑色进行填充(0,0,0)
-    new_img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=(0, 0, 0))
+    new_img = np.zeros((n_h, n_w, 3), dtype=np.uint8)
+    new_img[:, :, :] = (0, 0, 0)
+    new_img[top:top + h, left:left + w, :] = img
     return new_img
 
 
@@ -33,7 +36,7 @@ class Datasets(Dataset):
         # 语义分割需要的图片的图片和标签
         self.name1 = os.listdir(os.path.join(path, "images"))
         self.name2 = os.listdir(os.path.join(path, "1st_manual"))
-        self.trans = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
+        self.to_tensor = torchvision.transforms.ToTensor()
 
     def __len__(self):
         return len(self.name1)
@@ -48,13 +51,13 @@ class Datasets(Dataset):
         # 图片和标签的路径
         img_path = [os.path.join(self.path, i) for i in ("images", "1st_manual")]
         # 读取原始图片和标签，并转RGB
-        img_o = cv2.imread(os.path.join(img_path[0], name1))
-        _, img_l = cv2.VideoCapture(os.path.join(img_path[1], name2)).read()
-        img_o = cv2.cvtColor(img_o, cv2.COLOR_BGR2RGB)
-        img_l = cv2.cvtColor(img_l, cv2.COLOR_BGR2RGB)
+        img_o = Image.open(os.path.join(img_path[0], name1)).convert('RGB')
+        img_l = Image.open(os.path.join(img_path[1], name2)).convert('RGB')
+        img_o = np.array(img_o)
+        img_l = np.array(img_l)
 
         # 转成网络需要的正方形
-        img_o = __trans__(img_o, 256)
-        img_l = __trans__(img_l, 256)
+        img_o = trans(img_o, 256)
+        img_l = trans(img_l, 256)
 
-        return self.trans(img_o), self.trans(img_l)
+        return self.to_tensor(img_o), self.to_tensor(img_l)
