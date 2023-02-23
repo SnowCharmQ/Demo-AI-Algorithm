@@ -18,8 +18,12 @@ class Trainer:
         self.model = model
         self.model_copy = model_copy
         self.img_save_path = img_save_path
-        # 使用的设备
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+        cuda_id = 0
+        device_name = "cuda:{}".format(cuda_id)
+        # device_name = "cpu"
+        self.device = torch.device(device_name)
+
         # 网络
         self.net = UNet().to(self.device)
         # 优化器，这里用的Adam，跑得快点
